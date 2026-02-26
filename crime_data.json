@@ -1,0 +1,6 @@
+[
+  { "city": "Palm Desert", "type": "property", "lat": 33.7222, "lon": -116.3745 },
+  { "city": "Victorville", "type": "violent", "lat": 34.5361, "lon": -117.2912 },
+  { "city": "Indio", "type": "property", "lat": 33.7206, "lon": -116.2156 },
+  { "city": "Hesperia", "type": "violent", "lat": 34.4264, "lon": -117.3009 }
+]
