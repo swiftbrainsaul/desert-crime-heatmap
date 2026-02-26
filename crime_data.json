@@ -11,6 +11,9 @@
   { "city":"Victorville", "type":"property", "lat":34.5361, "lon":-117.2912, "date":"2026-02-15" },
   { "city":"Victorville", "type":"violent",  "lat":34.5350, "lon":-117.2899, "date":"2026-02-14" },
 
+  { "city":"Desert Hot Springs", "type":"property", "lat":33.9611, "lon":-116.5017, "date":"2026-02-14" },
+  { "city":"Desert Hot Springs", "type":"violent",  "lat":33.9599, "lon":-116.5001, "date":"2026-02-12" },
+ 
   { "city":"Adelanto", "type":"property", "lat":34.5828, "lon":-117.4092, "date":"2026-02-13" },
   { "city":"Adelanto", "type":"violent",  "lat":34.5815, "lon":-117.4075, "date":"2026-02-12" },
 
