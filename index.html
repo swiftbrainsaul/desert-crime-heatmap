@@ -99,8 +99,8 @@ function renderHeat(type) {
   const heatPoints = filtered.map(d => [d.lat, d.lon, 0.7]);
 
   heatLayer = L.heatLayer(heatPoints, {
-    radius: 22,
-    blur: 18,
+   radius: 35,
+blur: 25,
     maxZoom: 16
   }).addTo(map);
 }
