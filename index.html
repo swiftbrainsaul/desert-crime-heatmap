@@ -2,124 +2,352 @@
 <html>
 <head>
 <meta charset="utf-8" />
-<title>High Desert + Coachella Incident Heatmap</title>
+<title>Desert Incident Heatmap</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
 <style>
-body { margin:0; font-family: Arial, sans-serif; }
-#map { height: 100vh; }
+  body { margin:0; font-family: Arial, sans-serif; }
+  #map { height: 100vh; width: 100vw; }
 
-.controls {
-  position:absolute;
-  top:15px;
-  left:15px;
-  background:white;
-  padding:12px;
-  border-radius:8px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.15);
-  z-index:1000;
-}
+  .controls {
+    position:absolute;
+    top:15px;
+    left:15px;
+    background:rgba(20,20,20,0.92);
+    color:#fff;
+    padding:12px;
+    border-radius:10px;
+    box-shadow:0 2px 12px rgba(0,0,0,0.35);
+    z-index:1000;
+    width: 280px;
+  }
+  .controls input {
+    width: 100%;
+    padding:8px 10px;
+    border-radius:8px;
+    border:1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.08);
+    color:#fff;
+    outline:none;
+    margin-bottom:10px;
+  }
+  .row {
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  button {
+    padding:7px 10px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    background: rgba(255,255,255,0.12);
+    color:#fff;
+  }
+  button.active { background:#fff; color:#111; }
 
-button {
-  margin:3px 0;
-  padding:6px 10px;
-  border:none;
-  border-radius:5px;
-  cursor:pointer;
-  background:#f1f1f1;
-}
+  .hint {
+    margin-top:10px;
+    font-size:12px;
+    opacity:0.85;
+    line-height:1.35;
+  }
 
-button.active {
-  background:#111;
-  color:white;
-}
-
-input {
-  width:200px;
-  padding:6px;
-  margin-bottom:6px;
-}
-
-.footer {
-  position:absolute;
-  bottom:10px;
-  left:10px;
-  background:white;
-  padding:6px 10px;
-  font-size:11px;
-  border-radius:6px;
-  opacity:0.85;
-}
+  .footer {
+    position:absolute;
+    bottom:12px;
+    left:12px;
+    background:rgba(20,20,20,0.85);
+    color:#fff;
+    padding:8px 10px;
+    font-size:11px;
+    border-radius:8px;
+    z-index:1000;
+    max-width: 520px;
+  }
 </style>
 </head>
+
 <body>
 
 <div class="controls">
-  <input type="text" id="searchBox" placeholder="Search address..." />
-  <button onclick="filterType('all')" class="active" id="allBtn">All</button>
-  <button onclick="filterType('violent')" id="violentBtn">Violent</button>
-  <button onclick="filterType('property')" id="propertyBtn">Property</button>
+  <input id="searchBox" placeholder="Search listing address (press Enter)..." />
+
+  <div class="row">
+    <button id="typeAll" class="active" onclick="setTypeFilter('all')">All</button>
+    <button id="typeViolent" onclick="setTypeFilter('violent')">Violent</button>
+    <button id="typeProperty" onclick="setTypeFilter('property')">Property</button>
+  </div>
+
+  <div class="hint">
+    City layers: use the map’s layer control (top-right).<br/>
+    URL auto-zoom: <code style="color:#fff;">?address=123+Main+St+City+CA</code>
+  </div>
 </div>
 
 <div id="map"></div>
 
 <div class="footer">
-Incident reports reflect publicly available law enforcement data and may not represent all reported crime.
+  Heatmap shows incident density based on provided data. Reporting practices vary by agency. This visualization may not reflect all incidents or current conditions.
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
 <script>
-const map = L.map('map').setView([34.15, -116.75], 9);
-  
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
-}).addTo(map);
+/**
+ * ==== CONFIG YOU CAN EDIT ====
+ */
 
-let heatLayer;
+// 1) City populations for per-capita normalization.
+//    These are placeholders — update them to the values you want to use.
+//    Weight formula: weight = (10,000 / population) * baseWeight
+const CITY_POP = {
+  "Coachella": 45000,
+  "Palm Springs": 45000,
+  "Cathedral City": 55000,
+  "Victorville": 140000,
+  "Adelanto": 38000,
+  "Hesperia": 105000
+};
+
+// per 10k residents scaling
+const PER_CAPITA_SCALE = 10000;
+
+// Heat styling
+const HEAT_RADIUS = 35;
+const HEAT_BLUR = 25;
+
+// Violent = red gradient
+const GRADIENT_VIOLENT = {
+  0.15: "#330000",
+  0.35: "#660000",
+  0.55: "#990000",
+  0.75: "#cc0000",
+  1.0:  "#ff0000"
+};
+
+// Property = gold gradient
+const GRADIENT_PROPERTY = {
+  0.15: "#2a1f00",
+  0.35: "#5a4300",
+  0.55: "#8a6600",
+  0.75: "#caa300",
+  1.0:  "#ffd54a"
+};
+
+// 1-mile circle radius (meters)
+const LISTING_RADIUS_M = 1609.34;
+
+// Dark mode tiles (CartoDB Dark Matter)
+const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+const DARK_ATTRIB = '&copy; OpenStreetMap contributors &copy; CARTO';
+
+
+/**
+ * ==== MAP INIT ====
+ */
+const map = L.map('map').setView([34.15, -116.75], 9);
+
+L.tileLayer(DARK_TILES, { maxZoom: 19, attribution: DARK_ATTRIB }).addTo(map);
+
+// Listing marker + radius circle
+let listingMarker = null;
+let listingCircle = null;
+
+// Type filter: all | violent | property
+let typeFilter = 'all';
+
+// Cache full data
 let fullData = [];
 
+// Layer storage:
+// cityLayers[cityName] = { group: L.LayerGroup, violent: heatLayer, property: heatLayer }
+const cityLayers = {};
+
+// Also an "All Cities" overlay group (violent + property)
+let allCitiesGroup = L.layerGroup().addTo(map);
+let allViolent = null;
+let allProperty = null;
+
+// Layer control
+const layerControl = L.control.layers(
+  {}, // base layers (we only have one)
+  { "All Cities": allCitiesGroup },
+  { collapsed: false }
+).addTo(map);
+
+
+/**
+ * ==== DATA LOAD ====
+ */
 fetch('crime_data.json')
-  .then(res => res.json())
+  .then(r => r.json())
   .then(data => {
-    fullData = data;
-    renderHeat('all');
+    fullData = Array.isArray(data) ? data : [];
+    buildCityLayers();
+    rebuildAllCitiesLayers();
+    applyTypeVisibility();
+    autoZoomFromUrlOrInput();
+  })
+  .catch(err => {
+    console.error("Failed to load crime_data.json", err);
   });
 
-function renderHeat(type) {
-  if (heatLayer) {
-    map.removeLayer(heatLayer);
+
+/**
+ * ==== HELPERS ====
+ */
+function perCapitaWeight(city, baseWeight = 1) {
+  const pop = CITY_POP[city];
+  if (!pop || pop <= 0) return baseWeight * 0.2; // fallback
+  return (PER_CAPITA_SCALE / pop) * baseWeight;
+}
+
+function pointsFor(city, type) {
+  // returns [[lat, lon, weight], ...]
+  const filtered = fullData.filter(d => {
+    if (!d || typeof d.lat !== "number" || typeof d.lon !== "number") return false;
+    if (city && d.city !== city) return false;
+    if (type && d.type !== type) return false;
+    return true;
+  });
+
+  // Weight each incident by per-capita scaling for its city
+  return filtered.map(d => [d.lat, d.lon, perCapitaWeight(d.city, 1)]);
+}
+
+function makeHeat(points, gradient) {
+  return L.heatLayer(points, {
+    radius: HEAT_RADIUS,
+    blur: HEAT_BLUR,
+    maxZoom: 16,
+    gradient
+  });
+}
+
+function buildCityLayers() {
+  // Build one overlay per city: (violent layer + property layer)
+  const cities = [...new Set(fullData.map(d => d?.city).filter(Boolean))];
+
+  cities.forEach(city => {
+    const violentPts = pointsFor(city, "violent");
+    const propertyPts = pointsFor(city, "property");
+
+    const violentLayer = makeHeat(violentPts, GRADIENT_VIOLENT);
+    const propertyLayer = makeHeat(propertyPts, GRADIENT_PROPERTY);
+
+    const group = L.layerGroup([violentLayer, propertyLayer]);
+
+    cityLayers[city] = { group, violentLayer, propertyLayer };
+
+    // Add to layer control (unchecked by default)
+    layerControl.addOverlay(group, city);
+  });
+}
+
+function rebuildAllCitiesLayers() {
+  // Rebuild global (all cities) heat layers
+  if (allViolent) allCitiesGroup.removeLayer(allViolent);
+  if (allProperty) allCitiesGroup.removeLayer(allProperty);
+
+  allViolent = makeHeat(pointsFor(null, "violent"), GRADIENT_VIOLENT);
+  allProperty = makeHeat(pointsFor(null, "property"), GRADIENT_PROPERTY);
+
+  allCitiesGroup.addLayer(allViolent);
+  allCitiesGroup.addLayer(allProperty);
+}
+
+// Show/hide layers based on typeFilter
+function applyTypeVisibility() {
+  // All Cities group layers
+  if (allViolent && allProperty) {
+    if (typeFilter === "all" || typeFilter === "violent") allCitiesGroup.addLayer(allViolent);
+    else allCitiesGroup.removeLayer(allViolent);
+
+    if (typeFilter === "all" || typeFilter === "property") allCitiesGroup.addLayer(allProperty);
+    else allCitiesGroup.removeLayer(allProperty);
   }
 
-  const filtered = fullData.filter(d =>
-    type === 'all' ? true : d.type === type
-  );
+  // City groups layers
+  Object.values(cityLayers).forEach(obj => {
+    if (!obj) return;
+    const { group, violentLayer, propertyLayer } = obj;
 
-  const heatPoints = filtered.map(d => [d.lat, d.lon, 0.7]);
+    // group may or may not be currently enabled by user — but we still toggle its children
+    if (typeFilter === "all" || typeFilter === "violent") group.addLayer(violentLayer);
+    else group.removeLayer(violentLayer);
 
-  heatLayer = L.heatLayer(heatPoints, {
-   radius: 35,
-blur: 25,
-    maxZoom: 16
+    if (typeFilter === "all" || typeFilter === "property") group.addLayer(propertyLayer);
+    else group.removeLayer(propertyLayer);
+  });
+}
+
+function setTypeFilter(type) {
+  typeFilter = type;
+
+  // button UI
+  ["typeAll","typeViolent","typeProperty"].forEach(id => document.getElementById(id).classList.remove("active"));
+  if (type === "all") document.getElementById("typeAll").classList.add("active");
+  if (type === "violent") document.getElementById("typeViolent").classList.add("active");
+  if (type === "property") document.getElementById("typeProperty").classList.add("active");
+
+  applyTypeVisibility();
+}
+
+function setListing(lat, lon, label) {
+  const ll = [lat, lon];
+
+  if (listingMarker) map.removeLayer(listingMarker);
+  if (listingCircle) map.removeLayer(listingCircle);
+
+  listingMarker = L.marker(ll).addTo(map);
+  if (label) listingMarker.bindPopup(label).openPopup();
+
+  listingCircle = L.circle(ll, {
+    radius: LISTING_RADIUS_M,
+    weight: 2,
+    opacity: 0.8,
+    fillOpacity: 0.05
   }).addTo(map);
+
+  map.fitBounds(listingCircle.getBounds(), { padding: [25, 25] });
 }
 
-function filterType(type) {
-  document.querySelectorAll("button").forEach(b => b.classList.remove("active"));
-  document.getElementById(type + "Btn").classList.add("active");
-  renderHeat(type);
+// Nominatim geocode
+async function geocodeAddress(q) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (Array.isArray(data) && data.length > 0) return data[0];
+  return null;
 }
 
-document.getElementById("searchBox").addEventListener("keypress", function(e){
-  if(e.key === "Enter") {
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${this.value}`)
-      .then(res => res.json())
-      .then(data => {
-        if(data.length > 0) {
-          map.setView([data[0].lat, data[0].lon], 14);
-        }
-      });
+// Auto zoom from URL param or from search box
+function autoZoomFromUrlOrInput() {
+  const params = new URLSearchParams(window.location.search);
+  const addr = params.get("address");
+  if (addr) {
+    document.getElementById("searchBox").value = addr;
+    goSearch(addr);
+  }
+}
+
+async function goSearch(q) {
+  try {
+    const r = await geocodeAddress(q);
+    if (!r) return;
+    setListing(parseFloat(r.lat), parseFloat(r.lon), q);
+  } catch (e) {
+    console.error("Geocode failed", e);
+  }
+}
+
+document.getElementById("searchBox").addEventListener("keypress", function(e) {
+  if (e.key === "Enter") {
+    const q = this.value.trim();
+    if (q) goSearch(q);
   }
 });
 </script>
