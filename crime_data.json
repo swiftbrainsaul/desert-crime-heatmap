@@ -1,6 +1,14 @@
 [
-  { "city": "Palm Desert", "type": "property", "lat": 33.7222, "lon": -116.3745 },
+  { "city": "Coachella", "type": "property", "lat": 33.6817, "lon": -116.1739 },
+  { "city": "Coachella", "type": "property", "lat": 33.6820, "lon": -116.1740 },
+  { "city": "Palm Springs", "type": "violent", "lat": 33.8303, "lon": -116.5453 },
+  { "city": "Palm Springs", "type": "property", "lat": 33.8299, "lon": -116.5432 },
+  { "city": "Cathedral City", "type": "property", "lat": 33.7805, "lon": -116.4668 },
+  { "city": "Cathedral City", "type": "violent", "lat": 33.7812, "lon": -116.4639 },
   { "city": "Victorville", "type": "violent", "lat": 34.5361, "lon": -117.2912 },
-  { "city": "Indio", "type": "property", "lat": 33.7206, "lon": -116.2156 },
-  { "city": "Hesperia", "type": "violent", "lat": 34.4264, "lon": -117.3009 }
+  { "city": "Victorville", "type": "property", "lat": 34.5350, "lon": -117.2899 },
+  { "city": "Adelanto", "type": "property", "lat": 34.5828, "lon": -117.4092 },
+  { "city": "Adelanto", "type": "violent", "lat": 34.5815, "lon": -117.4075 },
+  { "city": "Hesperia", "type": "violent", "lat": 34.4264, "lon": -117.3009 },
+  { "city": "Hesperia", "type": "property", "lat": 34.4271, "lon": -117.2984 }
 ]
