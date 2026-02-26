@@ -1,0 +1,128 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>High Desert + Coachella Incident Heatmap</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+body { margin:0; font-family: Arial, sans-serif; }
+#map { height: 100vh; }
+
+.controls {
+  position:absolute;
+  top:15px;
+  left:15px;
+  background:white;
+  padding:12px;
+  border-radius:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.15);
+  z-index:1000;
+}
+
+button {
+  margin:3px 0;
+  padding:6px 10px;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+  background:#f1f1f1;
+}
+
+button.active {
+  background:#111;
+  color:white;
+}
+
+input {
+  width:200px;
+  padding:6px;
+  margin-bottom:6px;
+}
+
+.footer {
+  position:absolute;
+  bottom:10px;
+  left:10px;
+  background:white;
+  padding:6px 10px;
+  font-size:11px;
+  border-radius:6px;
+  opacity:0.85;
+}
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <input type="text" id="searchBox" placeholder="Search address..." />
+  <button onclick="filterType('all')" class="active" id="allBtn">All</button>
+  <button onclick="filterType('violent')" id="violentBtn">Violent</button>
+  <button onclick="filterType('property')" id="propertyBtn">Property</button>
+</div>
+
+<div id="map"></div>
+
+<div class="footer">
+Incident reports reflect publicly available law enforcement data and may not represent all reported crime.
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+<script>
+const map = L.map('map').setView([34.25, -116.9], 9);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
+
+let heatLayer;
+let fullData = [];
+
+fetch('crime_data.json')
+  .then(res => res.json())
+  .then(data => {
+    fullData = data;
+    renderHeat('all');
+  });
+
+function renderHeat(type) {
+  if (heatLayer) {
+    map.removeLayer(heatLayer);
+  }
+
+  const filtered = fullData.filter(d =>
+    type === 'all' ? true : d.type === type
+  );
+
+  const heatPoints = filtered.map(d => [d.lat, d.lon, 0.7]);
+
+  heatLayer = L.heatLayer(heatPoints, {
+    radius: 22,
+    blur: 18,
+    maxZoom: 16
+  }).addTo(map);
+}
+
+function filterType(type) {
+  document.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+  document.getElementById(type + "Btn").classList.add("active");
+  renderHeat(type);
+}
+
+document.getElementById("searchBox").addEventListener("keypress", function(e){
+  if(e.key === "Enter") {
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${this.value}`)
+      .then(res => res.json())
+      .then(data => {
+        if(data.length > 0) {
+          map.setView([data[0].lat, data[0].lon], 14);
+        }
+      });
+  }
+});
+</script>
+
+</body>
+</html>
