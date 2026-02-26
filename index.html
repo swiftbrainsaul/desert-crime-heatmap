@@ -54,10 +54,7 @@
     line-height: 1.4;
   }
 
-  .slider {
-    width: 100%;
-    margin-top: 6px;
-  }
+  .slider { width: 100%; margin-top: 6px; }
 
   .legend {
     display:flex;
@@ -130,6 +127,7 @@
 <script>
 /**
  * ==== CONFIG ====
+ * Default date window is 180 days (best for stable, visible heatmaps).
  */
 const CITY_POP = {
   "Coachella": 45000,
@@ -139,6 +137,7 @@ const CITY_POP = {
   "Adelanto": 38000,
   "Hesperia": 105000
 };
+
 const PER_CAPITA_SCALE = 10000;      // per 10k residents
 const HEAT_RADIUS = 35;
 const HEAT_BLUR = 25;
@@ -184,14 +183,7 @@ function parseDate(d) {
 
 function cutoffDate(days) {
   const now = new Date();
-  const c = new Date(now.getTime() - days * 24 * 3600 * 1000);
-  return c;
-}
-
-function perCapitaWeight(city, baseWeight = 1) {
-  const pop = CITY_POP[city];
-  const raw = (!pop || pop <= 0) ? (baseWeight * 0.2) : ((PER_CAPITA_SCALE / pop) * baseWeight);
-  return raw * intensityMult;
+  return new Date(now.getTime() - days * 24 * 3600 * 1000);
 }
 
 function inWindow(dObj) {
@@ -200,6 +192,12 @@ function inWindow(dObj) {
   const dt = parseDate(dObj.date);
   if (!dt) return true;
   return dt >= cutoffDate(daysWindow);
+}
+
+function perCapitaWeight(city, baseWeight = 1) {
+  const pop = CITY_POP[city];
+  const raw = (!pop || pop <= 0) ? (baseWeight * 0.2) : ((PER_CAPITA_SCALE / pop) * baseWeight);
+  return raw * intensityMult;
 }
 
 function pointsFor(city, type) {
@@ -242,7 +240,6 @@ function buildCityLayersOnce() {
 
 function refreshCityLayers() {
   Object.entries(cityLayers).forEach(([city, obj]) => {
-    // rebuild layer data by removing/recreating (simplest + reliable)
     obj.group.removeLayer(obj.violentLayer);
     obj.group.removeLayer(obj.propertyLayer);
 
@@ -256,7 +253,6 @@ function refreshCityLayers() {
 }
 
 function applyTypeVisibility() {
-  // All Cities
   if (allViolent && allProperty) {
     if (typeFilter === "all" || typeFilter === "violent") allCitiesGroup.addLayer(allViolent);
     else allCitiesGroup.removeLayer(allViolent);
@@ -265,7 +261,6 @@ function applyTypeVisibility() {
     else allCitiesGroup.removeLayer(allProperty);
   }
 
-  // Per-city overlays
   Object.values(cityLayers).forEach(obj => {
     if (!obj) return;
     if (typeFilter === "all" || typeFilter === "violent") obj.group.addLayer(obj.violentLayer);
@@ -416,4 +411,3 @@ fetch('crime_data.json')
 
 </body>
 </html>
-
