@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Deal Analyzer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<h1>Real Estate Deal Analyzer</h1>
+
+<h2>ARV Calculator</h2>
+
+<label>Subject Sqft</label>
+<input id="subjectSqft">
+
+<label>Comp 1 Price</label>
+<input id="comp1Price">
+
+<label>Comp 1 Sqft</label>
+<input id="comp1Sqft">
+
+<button onclick="calculateARV()">Calculate ARV</button>
+
+<h3 id="arvResult"></h3>
+
+
+<h2>Deal Math</h2>
+
+<label>Purchase Price</label>
+<input id="purchasePrice">
+
+<label>Rehab Cost</label>
+<input id="rehab">
+
+<label>Monthly Rent</label>
+<input id="rent">
+
+<button onclick="analyzeDeal()">Analyze Deal</button>
+
+<h3 id="dealResult"></h3>
+
+<script src="arv.js"></script>
+<script src="deal.js"></script>
+
+</body>
+</html>
